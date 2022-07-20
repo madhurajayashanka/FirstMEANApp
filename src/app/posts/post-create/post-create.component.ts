@@ -1,28 +1,37 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 
 import {FormControl, FormGroup, NgForm, Validators} from "@angular/forms";
 import {PostService} from "../post.service";
 import {ActivatedRoute, ParamMap} from "@angular/router";
 import {Post} from "../post.model";
 import {mimeType} from "./mime-type.validator";
+import {Subscription} from "rxjs";
+import {AuthService} from "../../auth/auth.service";
 
 @Component({
   selector: 'app-post-create',
   templateUrl: './post-create.component.html',
   styleUrls: ['./post-create.component.css']
 })
-export class PostCreateComponent implements OnInit {
+export class PostCreateComponent implements OnInit,OnDestroy {
 private  mode='create'
   private postId:string;
 public post:Post;
+private authStatusSub:Subscription;
 isLoading=false;
 form: FormGroup;
 imagePreview:string;
 
   constructor(public postService: PostService
-              ,public route:ActivatedRoute) { }
+              ,public route:ActivatedRoute,
+              private authService:AuthService) { }
 
   ngOnInit(): void {
+    this.authStatusSub=this.authService.getAuthStatusListener().subscribe(
+      authstatus=>{
+        this.isLoading=false;
+      }
+    );
     this.form=new FormGroup({
       'title':new FormControl(null,{validators:[Validators.required,Validators.minLength(3)]}),
       'content':new FormControl(null,{validators:[Validators.required,Validators.minLength(6)]}),
@@ -39,7 +48,8 @@ imagePreview:string;
             id:postData._id,
             title:postData.title,
             content:postData.content,
-            imagePath:postData.imagePath
+            imagePath:postData.imagePath,
+            creator:postData.creator,
           };
           this.form.setValue({
             'title':this.post.title,
@@ -85,6 +95,10 @@ imagePreview:string;
       this.imagePreview = reader.result as string;
     };
     reader.readAsDataURL(file);
+  }
+
+  ngOnDestroy(): void {
+    this.authStatusSub.unsubscribe();
   }
 
 }
